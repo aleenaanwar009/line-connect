@@ -197,7 +197,24 @@
         <button onclick="location.reload()">🔄 Play Again</button>
     </div>
     
-<script>
+<script type="module">
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC54_7QKpt3k_xCm5SgVVxz5TsqssnG74A",
+        authDomain: "line-connect-ffbe3.firebaseapp.com",
+        projectId: "line-connect-ffbe3",
+        storageBucket: "line-connect-ffbe3.firebasestorage.app",
+        messagingSenderId: "917162213914",
+        appId: "1:917162213914:web:66ba38e1f5af99a40ec7a3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    console.log("🔥 Firebase connected!");
+
     const board = document.getElementById("board");
     let currentPlayer = 1;
     let score1 = 0;
