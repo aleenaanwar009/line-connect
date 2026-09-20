@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Line Connect!</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #111827;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 40px;
+            font-size: 36px;
+        }
+
+        .subtitle {
+            color: #9ca3af;
+            margin-bottom: 40px;
+        }
+        .scoreboard {
+            width: 500px;
+            margin: 0 auto 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .score {
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-weight: bold;
+            background: #1f2937;
+        }
+
+        .player1-score {
+            color: #b77a9b;
+        }
+
+        .player2-score {
+            color: #6fa8dc;
+        }
+
+        .turn {
+            color: white;
+            font-weight: bold;
+        }
+
+        .board {
+            width: 500px;
+            height: 500px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(7, 1fr);
+            position: relative;
+        }
+
+        .dot {
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            justify-self: center;
+            align-self: center;
+            box-shadow: 0 0 12px
+      rgba(255,255,255,0.7);
+        }
+
+        .line {
+            position: absolute;
+            background: white;
+            cursor: pointer;
+            border-radius: 10px;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+
+        
+        .line:hover {
+            opacity: 0.7;
+        }
+
+        .player1 {
+            background: #b77a9b;
+        }
+
+        .player2 {
+            background: #6fa8dc;
+        }
+        .square {
+            position: absolute;
+            border-radius: 8px;
+            opacity: 0.35;
+            z-index: 0;
+        }
+        #gameOver {
+            width: 500px;
+            margin: 30px auto;
+            padding: 25px;
+            box-sizing: border-box;
+            background: #1f2937;
+            border-radius: 18px;
+            text-align: center;
+        }
+
+        #gameOver h2 {
+            margin-top: 0;
+            font-size: 30px;
+        }
+
+        #gameOver p {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        #gameOver button {
+            padding: 12px 22px;
+            border: none;
+            border-radius: 10px;
+            background: white;
+            color: #111827;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #gameOver button:hover {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 600px) {
+            .board {
+                width: 90vw;
+                height: 90vw;
+            }
+
+            .scoreboard {
+                width: 90vw;
+                gap: 8px;
+            }
+
+            .score {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+
+            .turn {
+                font-size: 13px;
+            }
+
+            #gameOver {
+                width: 90vw;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            .subtitle {
+                 margin-bottom: 25px;
+            }
+        }
+
+
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Line Connect!</h1>
+
+    <p class="subtitle">Connect the dots. Claim the squares.</p>
+    <div class="scoreboard">
+        <div class="score player1-score">
+            🌸 Player 1: <span id="score1">0</span>
+        </div>
+
+        <div class="turn" id="turn">
+             Player 1's turn
+        </div>
+
+        <div class="score player2-score">
+            💙 Player 2: <span id="score2">0</span>
+        </div>
+    </div>
+
+    <div class="board" id="board"></div>
+    <div id="gameOver" style="display: none;">
+        <h2>🏆 Game Over!</h2>
+        <p id="winnerMessage"></p>
+        <button onclick="location.reload()">🔄 Play Again</button>
+    </div>
+    
+<script>
+    const board = document.getElementById("board");
+    let currentPlayer = 1;
+    let score1 = 0;
+    let score2 = 0;
+
+    const claimedSquares = new Set();
+
+    function checkSquares() {
+        let completedCount = 0;
+
+        for (let row = 0; row < 6; row++) {
+            for (let col = 0; col < 6; col++) {
+
+                const key = `${row}-${col}`;
+
+                if (claimedSquares.has(key)) {
+                continue;
+                }
+
+                const top = document.querySelector(
+                `.horizontal[data-row="${row}"][data-col="${col}"]`
+                );
+
+                const bottom = document.querySelector(
+                `.horizontal[data-row="${row + 1}"][data-col="${col}"]`
+                );
+
+                const left = document.querySelector(
+                `.vertical[data-row="${row}"][data-col="${col}"]`
+                );
+
+                const right = document.querySelector(
+                `.vertical[data-row="${row}"][data-col="${col + 1}"]`
+                );
+
+                const complete =
+                    [top, bottom, left, right].every(line =>
+                        line.classList.contains("player1") ||
+                        line.classList.contains("player2")
+                    );
+
+                if (complete) {
+                    claimedSquares.add(key);
+                    completedCount++;
+
+                    const square = document.createElement("div");
+                    square.className = "square";
+
+                    if (currentPlayer === 1) {
+                        square.style.background = "#b77a9b";
+                    } else {
+                        square.style.background = "#6fa8dc";
+                    }
+
+                    square.style.left = `${col * 14.2857 + 7.1429}%`;
+                    square.style.top = `${row * 14.2857 + 7.1429}%`;
+                    square.style.width = "14.2857%";
+                    square.style.height = "14.2857%";
+
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        if (claimedSquares.size === 36) {
+            showGameOver();
+        }
+
+        return completedCount;
+    }
+    function updateTurn() {
+        const turnDisplay = document.getElementById("turn");
+
+        if (currentPlayer === 1) {
+            turnDisplay.textContent = "Player 1's turn 🌸";
+        } else {
+            turnDisplay.textContent = "Player 2's turn 💙";
+        }
+    }
+
+
+
+    for (let i = 0; i < 49; i++) {
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        board.appendChild(dot);
+    }
+    // Create all the lines
+for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < 6; col++) {
+        const line = document.createElement("div");
+        line.className = "line horizontal";
+
+        line.dataset.type = "horizontal";
+        line.dataset.row = row;
+        line.dataset.col = col;
+
+        line.style.left = `${14.2857 + col * 14.2857}%`;
+        line.style.top = `${row * 14.2857 + 7.1429}%`;
+        line.style.width = "14.2857%";
+        line.style.height = "6px";
+        line.addEventListener("click", function () {
+            if (line.classList.contains("player1") || line.classList.contains("player2")) {
+                return;
+            }
+
+            const player = currentPlayer;
+
+            if (player === 1) {
+        line.classList.add("player1");
+            } else {
+        line.classList.add("player2");
+            }
+
+            const completed = checkSquares();
+
+            if (completed > 0) {
+                if (player === 1) {
+                    score1 += completed;
+                } else {
+                    score2 += completed;
+                }
+
+        document.getElementById("score1").textContent = score1;
+        document.getElementById("score2").textContent = score2;
+
+                currentPlayer = player;
+            } else {
+                currentPlayer = player === 1 ? 2 : 1;
+            }
+
+            updateTurn();
+        });
+
+
+        board.appendChild(line);
+    }
+}
+
+for (let row = 0; row < 6; row++) {
+    for (let col = 0; col < 7; col++) {
+        const line = document.createElement("div");
+        line.className = "line vertical";
+
+        line.dataset.type = "vertical";
+        line.dataset.row = row;
+        line.dataset.col = col;
+
+        line.style.left = `${col * 14.2857 + 7.1429}%`;
+        line.style.top = `${14.2857 + row * 14.2857}%`;
+        line.style.width = "6px";
+        line.style.height = "14.2857%";
+        line.addEventListener("click", function () {
+            if (line.classList.contains("player1") || line.classList.contains("player2")) {
+                return;
+        }
+
+            const player = currentPlayer;
+
+            if (player === 1) {
+        line.classList.add("player1");
+            } else {
+        line.classList.add("player2");
+        }
+
+            const completed = checkSquares();
+
+            if (completed > 0) {
+                if (player === 1) {
+                    score1 += completed;
+                } else {
+                    score2 += completed;
+                }
+
+        document.getElementById("score1").textContent = score1;
+        document.getElementById("score2").textContent = score2;
+
+                currentPlayer = player;
+            } else {
+        currentPlayer = player === 1 ? 2 : 1;
+            }
+
+            updateTurn();
+        });
+
+        board.appendChild(line);
+    }
+}
+    function showGameOver() {
+        const gameOver = document.getElementById("gameOver");
+        const winnerMessage = document.getElementById("winnerMessage");
+
+        gameOver.style.display = "block";
+
+        if (score1 > score2) {
+            winnerMessage.textContent =
+            `🌸 Player 1 wins! ${score1} - ${score2}`;
+        } else if (score2 > score1) {
+            winnerMessage.textContent =
+            `💙 Player 2 wins! ${score2} - ${score1}`;
+        } else {
+            winnerMessage.textContent =
+            `🤝 It's a draw! ${score1} - ${score2}`;
+        }
+    }
+</script>
+
+</body>
+</html>
