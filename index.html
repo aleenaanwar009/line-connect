@@ -212,7 +212,7 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    const db = getDatabase(app, "https://line-connect-ffbe3-default-rtdb.asia-southeast1.firebasedatabase.app/");
 
     const roomId = "demo-room";
     const gameRef = ref(db, "rooms/" + roomId);
