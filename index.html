@@ -194,7 +194,7 @@
     <div id="gameOver" style="display: none;">
         <h2>🏆 Game Over!</h2>
         <p id="winnerMessage"></p>
-        <button onclick="resetGame()">🔄 Play Again</button>
+        <button id="playAgainButton">🔄 Play Again</button>
     </div>
     
 <script type="module">
@@ -312,7 +312,7 @@
         }));
     }
 
-    window.resetGame = resetGame;
+    document.getElementById("playAgainButton").addEventListener("click", resetGame);
 
     console.log("🔥 Firebase connected!");
 
