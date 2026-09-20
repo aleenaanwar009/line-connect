@@ -194,7 +194,7 @@
     <div id="gameOver" style="display: none;">
         <h2>🏆 Game Over!</h2>
         <p id="winnerMessage"></p>
-        <button onclick="location.reload()">🔄 Play Again</button>
+        <button onclick="resetGame()">🔄 Play Again</button>
     </div>
     
 <script type="module">
@@ -292,13 +292,24 @@
         if (
             gameState.claimedSquares &&
     Object.keys(gameState.claimedSquares).length === 36
-        ) {
-            showGameOver();
+    ) {
+        showGameOver();
+    } else {
+    document.getElementById("gameOver").style.display = "none";
     }
     });
 
     function saveGameState() {
         set(gameRef, gameState);
+    }
+    function resetGame() {
+        runTransaction(gameRef, () => ({
+            currentPlayer: 1,
+            score1: 0,
+            score2: 0,
+            lines: {},
+            claimedSquares: {}
+        }));
     }
 
     console.log("🔥 Firebase connected!");
