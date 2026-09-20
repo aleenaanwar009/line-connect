@@ -214,7 +214,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app, "https://line-connect-ffbe3-default-rtdb.asia-southeast1.firebasedatabase.app/");
 
-    const roomId = "demo-room";
+    const roomId = "sync-room";
     const gameRef = ref(db, "rooms/" + roomId);
 
     onValue(gameRef, (snapshot) => {
@@ -222,20 +222,35 @@
 
         console.log("📡 Firebase room data:", data);
 
-        if (!data || !data.lines) {
+        if (!data) {
             return;
         }
 
-    Object.entries(data.lines).forEach(([key, player]) => {
+        gameState = data;
+
+        // Update scores
+    document.getElementById("score1").textContent = gameState.score1 || 0;
+    document.getElementById("score2").textContent = gameState.score2 || 0;
+
+        // Update whose turn it is
+        gameState.currentPlayer = gameState.currentPlayer || 1;
+
+        updateTurn();
+
+        // Update all lines
+    document.querySelectorAll(".line").forEach(line => {
+    line.classList.remove("player1", "player2");
+        });
+
+        if (gameState.lines) {
+    Object.entries(gameState.lines).forEach(([key, player]) => {
             const [type, row, col] = key.split("-");
 
             const line = document.querySelector(
-            `.${type}[data-row="${row}"][data-col="${col}"]`
+                `.${type}[data-row="${row}"][data-col="${col}"]`
             );
 
             if (!line) return;
-
-    line.classList.remove("player1", "player2");
 
             if (player === 1) {
     line.classList.add("player1");
@@ -243,86 +258,92 @@
     line.classList.add("player2");
             }
         });
+    }
+    document.querySelectorAll(".square").forEach(square => {
+    square.remove();
+        });
+
+        if (gameState.claimedSquares) {
+    Object.entries(gameState.claimedSquares).forEach(([key, player]) => {
+            const [row, col] = key.split("-").map(Number);
+
+            const square = document.createElement("div");
+            square.className = "square";
+            square.dataset.square = key;
+
+            if (player === 1) {
+    square.style.background = "#b77a9b";
+            } else {
+    square.style.background = "#6fa8dc";
+            }
+
+            square.style.left =
+            `${col * 14.2857 + 7.1429}%`;
+
+            square.style.top =
+            `${row * 14.2857 + 7.1429}%`;
+
+            square.style.width = "14.2857%";
+            square.style.height = "14.2857%";
+
+    board.appendChild(square);
+            });
+        }
     });
 
-    function saveLine(line, player) {
-        const key =
-            `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
-
-        set(
-            ref(db, "rooms/" + roomId + "/lines/" + key),
-            player
-        );
+    function saveGameState() {
+        set(gameRef, gameState);
     }
 
     console.log("🔥 Firebase connected!");
 
     const board = document.getElementById("board");
-    let currentPlayer = 1;
-    let score1 = 0;
-    let score2 = 0;
 
-    const claimedSquares = new Set();
+    let gameState = {
+        currentPlayer: 1,
+        score1: 0,
+        score2: 0,
+        lines: {},
+        claimedSquares: {}
+    };
 
     function checkSquares() {
         let completedCount = 0;
+
+        const player = gameState.currentPlayer;
 
         for (let row = 0; row < 6; row++) {
             for (let col = 0; col < 6; col++) {
 
                 const key = `${row}-${col}`;
 
-                if (claimedSquares.has(key)) {
-                continue;
+                if (gameState.claimedSquares[key]) {
+                    continue;
                 }
 
-                const top = document.querySelector(
-                `.horizontal[data-row="${row}"][data-col="${col}"]`
-                );
+                const top =
+    gameState.lines[`horizontal-${row}-${col}`];
 
-                const bottom = document.querySelector(
-                `.horizontal[data-row="${row + 1}"][data-col="${col}"]`
-                );
+                const bottom =
+    gameState.lines[`horizontal-${row + 1}-${col}`];
 
-                const left = document.querySelector(
-                `.vertical[data-row="${row}"][data-col="${col}"]`
-                );
+                const left =
+    gameState.lines[`vertical-${row}-${col}`];
 
-                const right = document.querySelector(
-                `.vertical[data-row="${row}"][data-col="${col + 1}"]`
-                );
+                const right =
+    gameState.lines[`vertical-${row}-${col + 1}`];
 
                 const complete =
-                    [top, bottom, left, right].every(line =>
-                        line.classList.contains("player1") ||
-                        line.classList.contains("player2")
-                    );
+                    top &&
+                    bottom &&
+                    left &&
+                    right;
 
                 if (complete) {
-                    claimedSquares.add(key);
+    gameState.claimedSquares[key] = player;
                     completedCount++;
-
-                    const square = document.createElement("div");
-                    square.className = "square";
-
-                    if (currentPlayer === 1) {
-                        square.style.background = "#b77a9b";
-                    } else {
-                        square.style.background = "#6fa8dc";
-                    }
-
-                    square.style.left = `${col * 14.2857 + 7.1429}%`;
-                    square.style.top = `${row * 14.2857 + 7.1429}%`;
-                    square.style.width = "14.2857%";
-                    square.style.height = "14.2857%";
-
-                    board.appendChild(square);
                 }
             }
-        }
-
-        if (claimedSquares.size === 36) {
-            showGameOver();
         }
 
         return completedCount;
@@ -330,7 +351,7 @@
     function updateTurn() {
         const turnDisplay = document.getElementById("turn");
 
-        if (currentPlayer === 1) {
+        if (gameState.currentPlayer === 1) {
             turnDisplay.textContent = "Player 1's turn 🌸";
         } else {
             turnDisplay.textContent = "Player 2's turn 💙";
@@ -363,7 +384,12 @@ for (let row = 0; row < 7; row++) {
                 return;
             }
 
-            const player = currentPlayer;
+            const player = gameState.currentPlayer;
+
+            const key =
+                `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
+
+            gameState.lines[key] = player;
 
             if (player === 1) {
         line.classList.add("player1");
@@ -371,28 +397,24 @@ for (let row = 0; row < 7; row++) {
         line.classList.add("player2");
             }
 
-        saveLine(line, player);    
-
             const completed = checkSquares();
 
             if (completed > 0) {
                 if (player === 1) {
-                    score1 += completed;
+                    gameState.score1 += completed;
                 } else {
-                    score2 += completed;
+                     gameState.score2 += completed;
                 }
 
-        document.getElementById("score1").textContent = score1;
-        document.getElementById("score2").textContent = score2;
-
-                currentPlayer = player;
+                // Same player gets another turn
+                gameState.currentPlayer = player;
             } else {
-                currentPlayer = player === 1 ? 2 : 1;
+                // Switch players
+                gameState.currentPlayer = player === 1 ? 2 : 1;
             }
 
-            updateTurn();
+            saveGameState();
         });
-
 
         board.appendChild(line);
     }
@@ -414,37 +436,39 @@ for (let row = 0; row < 6; row++) {
         line.addEventListener("click", function () {
             if (line.classList.contains("player1") || line.classList.contains("player2")) {
                 return;
+            }
+
+            const player = gameState.currentPlayer;
+
+            const key =
+        `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
+
+        gameState.lines[key] = player;
+
+        if (player === 1) {
+    line.classList.add("player1");
+        } else {
+    line.classList.add("player2");
         }
 
-            const player = currentPlayer;
+        const completed = checkSquares();
 
+        if (completed > 0) {
             if (player === 1) {
-                line.classList.add("player1");
+                gameState.score1 += completed;
             } else {
-                line.classList.add("player2");
+                gameState.score2 += completed;
             }
 
-            saveLine(line, player);
+            // Same player gets another turn
+            gameState.currentPlayer = player;
+        } else {
+            // Switch players
+            gameState.currentPlayer = player === 1 ? 2 : 1;
+        }
 
-            const completed = checkSquares();
-
-            if (completed > 0) {
-                if (player === 1) {
-                    score1 += completed;
-                } else {
-                    score2 += completed;
-                }
-
-        document.getElementById("score1").textContent = score1;
-        document.getElementById("score2").textContent = score2;
-
-                currentPlayer = player;
-            } else {
-        currentPlayer = player === 1 ? 2 : 1;
-            }
-
-            updateTurn();
-        });
+        saveGameState();
+    });
 
         board.appendChild(line);
     }
@@ -455,15 +479,15 @@ for (let row = 0; row < 6; row++) {
 
         gameOver.style.display = "block";
 
-        if (score1 > score2) {
-            winnerMessage.textContent =
-            `🌸 Player 1 wins! ${score1} - ${score2}`;
-        } else if (score2 > score1) {
-            winnerMessage.textContent =
-            `💙 Player 2 wins! ${score2} - ${score1}`;
+        if (gameState.score1 > gameState.score2) {
+        winnerMessage.textContent =
+            `🌸 Player 1 wins! ${gameState.score1} - ${gameState.score2}`;
+        } else if (gameState.score2 > gameState.score1) {
+        winnerMessage.textContent =
+            `💙 Player 2 wins! ${gameState.score2} - ${gameState.score1}`;
         } else {
-            winnerMessage.textContent =
-            `🤝 It's a draw! ${score1} - ${score2}`;
+        winnerMessage.textContent =
+            `🤝 It's a draw! ${gameState.score1} - ${gameState.score2}`;
         }
     }
 </script>
