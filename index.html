@@ -289,6 +289,12 @@
     board.appendChild(square);
             });
         }
+        if (
+            gameState.claimedSquares &&
+    Object.keys(gameState.claimedSquares).length === 36
+        ) {
+            showGameOver();
+    }
     });
 
     function saveGameState() {
