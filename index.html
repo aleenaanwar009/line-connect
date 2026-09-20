@@ -200,7 +200,7 @@
 <script type="module">
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+    import { getDatabase, ref, set, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyC54_7QKpt3k_xCm5SgVVxz5TsqssnG74A",
@@ -307,31 +307,29 @@
         claimedSquares: {}
     };
 
-    function checkSquares() {
+    function checkSquares(state, player) {
         let completedCount = 0;
-
-        const player = gameState.currentPlayer;
 
         for (let row = 0; row < 6; row++) {
             for (let col = 0; col < 6; col++) {
 
                 const key = `${row}-${col}`;
 
-                if (gameState.claimedSquares[key]) {
+                if (state.claimedSquares[key]) {
                     continue;
                 }
 
                 const top =
-    gameState.lines[`horizontal-${row}-${col}`];
+    state.lines[`horizontal-${row}-${col}`];
 
                 const bottom =
-    gameState.lines[`horizontal-${row + 1}-${col}`];
+    state.lines[`horizontal-${row + 1}-${col}`];
 
                 const left =
-    gameState.lines[`vertical-${row}-${col}`];
+    state.lines[`vertical-${row}-${col}`];
 
                 const right =
-    gameState.lines[`vertical-${row}-${col + 1}`];
+    state.lines[`vertical-${row}-${col + 1}`];
 
                 const complete =
                     top &&
@@ -340,8 +338,8 @@
                     right;
 
                 if (complete) {
-    gameState.claimedSquares[key] = player;
-                    completedCount++;
+                state.claimedSquares[key] = player;
+                completedCount++;
                 }
             }
         }
@@ -382,39 +380,53 @@ for (let row = 0; row < 7; row++) {
         line.addEventListener("click", function () {
             if (line.classList.contains("player1") || line.classList.contains("player2")) {
                 return;
+        }
+
+        const key =
+            `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
+
+        runTransaction(gameRef, (state) => {
+            if (!state) {
+                state = {
+                    currentPlayer: 1,
+                    score1: 0,
+                    score2: 0,
+                    lines: {},
+                    claimedSquares: {}
+                };
             }
 
-            const player = gameState.currentPlayer;
+            state.lines = state.lines || {};
+            state.claimedSquares = state.claimedSquares || {};
 
-            const key =
-                `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
-
-            gameState.lines[key] = player;
-
-            if (player === 1) {
-        line.classList.add("player1");
-            } else {
-        line.classList.add("player2");
+            // Someone may have claimed this line while we were waiting.
+            if (state.lines[key]) {
+                return;
             }
 
-            const completed = checkSquares();
+            const player = state.currentPlayer || 1;
+
+            state.lines[key] = player;
+
+            const completed = checkSquares(state, player);
 
             if (completed > 0) {
                 if (player === 1) {
-                    gameState.score1 += completed;
+                    state.score1 += completed;
                 } else {
-                     gameState.score2 += completed;
+                    state.score2 += completed;
                 }
 
-                // Same player gets another turn
-                gameState.currentPlayer = player;
+                // Same player gets another turn.
+                state.currentPlayer = player;
             } else {
-                // Switch players
-                gameState.currentPlayer = player === 1 ? 2 : 1;
+                // Switch players.
+                state.currentPlayer = player === 1 ? 2 : 1;
             }
 
-            saveGameState();
+            return state;
         });
+    });   
 
         board.appendChild(line);
     }
@@ -438,38 +450,51 @@ for (let row = 0; row < 6; row++) {
                 return;
             }
 
-            const player = gameState.currentPlayer;
-
             const key =
-        `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
+                `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
 
-        gameState.lines[key] = player;
+            runTransaction(gameRef, (state) => {
+                 if (!state) {
+                    state = {
+                        currentPlayer: 1,
+                        score1: 0,
+                        score2: 0,
+                        lines: {},
+                        claimedSquares: {}
+                    };
+                }
 
-        if (player === 1) {
-    line.classList.add("player1");
-        } else {
-    line.classList.add("player2");
-        }
+                state.lines = state.lines || {};
+                state.claimedSquares = state.claimedSquares || {};
 
-        const completed = checkSquares();
+                // Someone may have claimed this line while we were waiting.
+                if (state.lines[key]) {
+                    return;
+                }
 
-        if (completed > 0) {
-            if (player === 1) {
-                gameState.score1 += completed;
-            } else {
-                gameState.score2 += completed;
-            }
+                const player = state.currentPlayer || 1;
 
-            // Same player gets another turn
-            gameState.currentPlayer = player;
-        } else {
-            // Switch players
-            gameState.currentPlayer = player === 1 ? 2 : 1;
-        }
+        state.lines[key] = player;
 
-        saveGameState();
-    });
+                const completed = checkSquares(state, player);
 
+                if (completed > 0) {
+                    if (player === 1) {
+                        state.score1 += completed;
+                    } else {
+                        state.score2 += completed;
+                    }
+
+                    // Same player gets another turn.
+                    state.currentPlayer = player;
+                } else {
+                    // Switch players.
+                    state.currentPlayer = player === 1 ? 2 : 1;
+                }
+
+                return state;
+            });
+        });
         board.appendChild(line);
     }
 }
