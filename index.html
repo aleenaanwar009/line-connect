@@ -219,8 +219,41 @@
 
     onValue(gameRef, (snapshot) => {
         const data = snapshot.val();
+
         console.log("📡 Firebase room data:", data);
+
+        if (!data || !data.lines) {
+            return;
+        }
+
+    Object.entries(data.lines).forEach(([key, player]) => {
+            const [type, row, col] = key.split("-");
+
+            const line = document.querySelector(
+            `.${type}[data-row="${row}"][data-col="${col}"]`
+            );
+
+            if (!line) return;
+
+    line.classList.remove("player1", "player2");
+
+            if (player === 1) {
+    line.classList.add("player1");
+            } else if (player === 2) {
+    line.classList.add("player2");
+            }
+        });
     });
+
+    function saveLine(line, player) {
+        const key =
+            `${line.dataset.type}-${line.dataset.row}-${line.dataset.col}`;
+
+        set(
+            ref(db, "rooms/" + roomId + "/lines/" + key),
+            player
+        );
+    }
 
     console.log("🔥 Firebase connected!");
 
@@ -338,6 +371,8 @@ for (let row = 0; row < 7; row++) {
         line.classList.add("player2");
             }
 
+        saveLine(line, player);    
+
             const completed = checkSquares();
 
             if (completed > 0) {
@@ -384,10 +419,12 @@ for (let row = 0; row < 6; row++) {
             const player = currentPlayer;
 
             if (player === 1) {
-        line.classList.add("player1");
+                line.classList.add("player1");
             } else {
-        line.classList.add("player2");
-        }
+                line.classList.add("player2");
+            }
+
+            saveLine(line, player);
 
             const completed = checkSquares();
 
