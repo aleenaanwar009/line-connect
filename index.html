@@ -310,8 +310,14 @@
             score2: 0,
             lines: {},
             claimedSquares: {}
-        }));
-    }
+        })).then(() => {
+            console.log("✅ RESET SUCCESSFUL");
+        }).catch((error) => {
+            console.error("❌ RESET FAILED:", error);
+        });
+    }   
+    
+    
 
     document.getElementById("playAgainButton").addEventListener("click", resetGame);
 
